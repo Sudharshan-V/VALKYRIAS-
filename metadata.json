@@ -1,0 +1,6 @@
+{
+  "name": "Valkyrias Digital Art Agency",
+  "description": "A high-end digital art agency portal with client collaborations, administrative dashboards, custom portfolios, and the Laura AI chatbot.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
