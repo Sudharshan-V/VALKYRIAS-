@@ -1,7 +1,13 @@
 import { createClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = "https://mqikasdtpnqnzsrevunv.supabase.co/rest/v1/";
-const SUPABASE_PUBLIC_KEY = "sb_publishable_BMfGHJ5MmI_NwTFUxhgDOg_csLt2QQL";
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_PUBLIC_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+if (!SUPABASE_URL || !SUPABASE_PUBLIC_KEY) {
+  throw new Error(
+    'Missing Supabase configuration. Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY.',
+  );
+}
 
 // Clean the URL if it contains the REST API suffix
 const cleanUrl = SUPABASE_URL.endsWith('/rest/v1/')
@@ -10,4 +16,3 @@ const cleanUrl = SUPABASE_URL.endsWith('/rest/v1/')
 
 export const supabase = createClient(cleanUrl, SUPABASE_PUBLIC_KEY);
 export { SUPABASE_URL, SUPABASE_PUBLIC_KEY };
-

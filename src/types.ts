@@ -91,3 +91,110 @@ export interface AppState {
   storageUsed: number; // in TB
   storageTotal: number; // in TB
 }
+
+export type ProfileRole = 'CLIENT' | 'EDITOR' | 'ADMIN';
+
+export type ClientType =
+  | 'INDIVIDUAL'
+  | 'BUSINESS'
+  | 'AGENCY'
+  | 'NON_PROFIT'
+  | 'OTHER';
+
+export type PreferredCommunication =
+  | 'EMAIL'
+  | 'PHONE'
+  | 'WHATSAPP'
+  | 'VIDEO_CALL'
+  | 'OTHER';
+
+export type AvailabilityStatus =
+  | 'AVAILABLE'
+  | 'LIMITED'
+  | 'UNAVAILABLE';
+
+export interface ClientProfileResponse {
+  companyName: string | null;
+  clientType: ClientType | null;
+  preferredCommunication: PreferredCommunication | null;
+  defaultProjectCategory: string | null;
+}
+
+export interface EditorProfileResponse {
+  professionalTitle: string | null;
+  experienceYears: number | null;
+  skills: string[];
+  softwareUsed: string[];
+  languages: string[];
+  startingPrice: number | null;
+  hourlyRate: number | null;
+  deliveryTime: string | null;
+  availabilityStatus: AvailabilityStatus | null;
+  portfolioSummary: string | null;
+  certifications: string[];
+  location: string | null;
+  websiteUrl: string | null;
+  instagramUrl: string | null;
+  linkedinUrl: string | null;
+}
+
+export interface ProfileResponse {
+  email: string;
+  role: ProfileRole;
+  fullName: string | null;
+  displayName: string | null;
+  profileImageUrl: string | null;
+  phoneNumber: string | null;
+  country: string | null;
+  timezone: string | null;
+  bio: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+  clientProfile: ClientProfileResponse | null;
+  editorProfile: EditorProfileResponse | null;
+}
+
+export interface ClientProfileRequest {
+  companyName: string | null;
+  clientType: ClientType | null;
+  preferredCommunication: PreferredCommunication | null;
+  defaultProjectCategory: string | null;
+}
+
+export interface EditorProfileRequest {
+  professionalTitle: string | null;
+  experienceYears: number | null;
+  skills: string[];
+  softwareUsed: string[];
+  languages: string[];
+  startingPrice: number | null;
+  hourlyRate: number | null;
+  deliveryTime: string | null;
+  availabilityStatus: AvailabilityStatus | null;
+  portfolioSummary: string | null;
+  certifications: string[];
+  location: string | null;
+  websiteUrl: string | null;
+  instagramUrl: string | null;
+  linkedinUrl: string | null;
+}
+
+export interface ProfileUpdateRequest {
+  fullName: string;
+  displayName: string | null;
+  phoneNumber: string | null;
+  country: string | null;
+  timezone: string | null;
+  bio: string | null;
+  clientProfile?: ClientProfileRequest;
+  editorProfile?: EditorProfileRequest;
+}
+
+export interface ApiErrorResponse {
+  timestamp?: string;
+  status: number;
+  error?: string;
+  message: string;
+  path?: string;
+  fieldErrors?: Record<string, string>;
+}

@@ -1,7 +1,8 @@
 package com.valkyrias.agency.controller;
 
 import com.valkyrias.agency.model.AppSetting;
-import com.valkyrias.agency.service.AppSettingService;
+import com.valkyrias.agency.repository.AppSettingRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.UUID;
@@ -11,21 +12,18 @@ import java.util.UUID;
 @CrossOrigin(origins = "*")
 public class AppSettingController {
 
-    private final AppSettingService appSettingService;
-
-    public AppSettingController(AppSettingService appSettingService) {
-        this.appSettingService = appSettingService;
-    }
+    @Autowired
+    private AppSettingRepository appSettingRepository;
 
     @GetMapping("/{userId}")
     public ResponseEntity<AppSetting> getSettings(@PathVariable UUID userId) {
-        return appSettingService.getSettingsByUserId(userId)
+        return appSettingRepository.findById(userId)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
     @PostMapping
     public ResponseEntity<AppSetting> saveSettings(@RequestBody AppSetting settings) {
-        return ResponseEntity.ok(appSettingService.saveSettings(settings));
+        return ResponseEntity.ok(appSettingRepository.save(settings));
     }
 }

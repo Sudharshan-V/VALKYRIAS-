@@ -1,9 +1,12 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import {defineConfig} from 'vite';
+import {defineConfig, loadEnv} from 'vite';
 
-export default defineConfig(() => {
+export default defineConfig(({mode}) => {
+  const env = loadEnv(mode, process.cwd(), 'DEV_');
+  const apiProxyTarget = env.DEV_API_PROXY_TARGET;
+
   return {
     plugins: [react(), tailwindcss()],
     resolve: {
@@ -17,13 +20,13 @@ export default defineConfig(() => {
       hmr: process.env.DISABLE_HMR !== 'true',
       // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
-      proxy: {
+      proxy: apiProxyTarget ? {
         '/api': {
-          target: 'http://localhost:8080',
+          target: apiProxyTarget,
           changeOrigin: true,
           secure: false,
         }
-      }
+      } : undefined,
     },
   };
 });

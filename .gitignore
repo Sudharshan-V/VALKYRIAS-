@@ -1,8 +1,16 @@
 node_modules/
+target/
 build/
 dist/
 coverage/
+
+apache-maven-3.9.6/
+
+.vscode/
+.idea/
+
 .DS_Store
 *.log
+
 .env*
 !.env.example

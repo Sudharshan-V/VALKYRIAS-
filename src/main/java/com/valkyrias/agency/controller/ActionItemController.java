@@ -1,7 +1,8 @@
 package com.valkyrias.agency.controller;
 
 import com.valkyrias.agency.model.ActionItem;
-import com.valkyrias.agency.service.ActionItemService;
+import com.valkyrias.agency.repository.ActionItemRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
@@ -12,25 +13,23 @@ import java.util.UUID;
 @CrossOrigin(origins = "*")
 public class ActionItemController {
 
-    private final ActionItemService actionItemService;
-
-    public ActionItemController(ActionItemService actionItemService) {
-        this.actionItemService = actionItemService;
-    }
+    @Autowired
+    private ActionItemRepository actionItemRepository;
 
     @GetMapping("/user/{userId}")
     public ResponseEntity<List<ActionItem>> getActionItemsByUser(@PathVariable UUID userId) {
-        return ResponseEntity.ok(actionItemService.getActionItemsByUserId(userId));
+        return ResponseEntity.ok(actionItemRepository.findByUserId(userId));
     }
 
     @PostMapping
     public ResponseEntity<ActionItem> saveActionItem(@RequestBody ActionItem actionItem) {
-        return ResponseEntity.ok(actionItemService.saveActionItem(actionItem));
+        return ResponseEntity.ok(actionItemRepository.save(actionItem));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteActionItem(@PathVariable String id) {
-        if (actionItemService.deleteActionItem(id)) {
+        if (actionItemRepository.existsById(id)) {
+            actionItemRepository.deleteById(id);
             return ResponseEntity.ok().build();
         }
         return ResponseEntity.notFound().build();

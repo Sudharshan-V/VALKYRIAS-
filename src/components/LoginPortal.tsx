@@ -7,7 +7,6 @@ import {
 } from 'lucide-react';
 import { ValkyriasLogo } from './ValkyriasLogo';
 import { supabase } from '../supabaseClient';
-import * as api from '../api';
 
 export const LoginPortal: React.FC = () => {
   const { login, setView } = useAppState();
@@ -21,7 +20,7 @@ export const LoginPortal: React.FC = () => {
   const [selectedRole, setSelectedRole] = useState<'admin' | 'client' | 'editor'>('client');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('tanishq@reliancejewels.com');
-  const [password, setPassword] = useState('valkyrias2026');
+  const [password, setPassword] = useState('');
   const [isSignUpMode, setIsSignUpMode] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -56,7 +55,7 @@ export const LoginPortal: React.FC = () => {
   const handleSelectRoleStep = (roleId: 'admin' | 'client' | 'editor', defaultEmail: string) => {
     setSelectedRole(roleId);
     setEmail(defaultEmail);
-    setPassword('valkyrias2026'); // Seeded testing password
+    setPassword('');
     setErrorMsg('');
     setSignupSuccessMessage('');
     setLoginStep('enter_credentials');
@@ -79,45 +78,44 @@ export const LoginPortal: React.FC = () => {
 
     try {
       if (isSignUpMode) {
-        // Sign Up Flow via Spring Boot REST
-        const data = await api.register({
-          name,
+        // Sign Up Flow
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
-          role: selectedRole
+          options: {
+            data: {
+              full_name: name,
+            }
+          }
         });
 
-        if (!data || data.status !== 'success') {
-          setErrorMsg('Registration failed.');
+        if (error) {
+          setErrorMsg(error.message);
           setIsLoading(false);
         } else {
           setPassword('');
           setName('');
-          setSignupSuccessMessage("Your account has been created. You can now authorize your session and log in.");
+          setSignupSuccessMessage("Your account has been created. Please check your email and verify your address before logging in.");
           setIsSignUpMode(false);
           setIsLoading(false);
         }
       } else {
-        // Sign In Flow via Spring Boot REST
+        // Sign In Flow
         setSignupSuccessMessage('');
-        const data = await api.login({
+        const { error } = await supabase.auth.signInWithPassword({
           email,
           password
         });
 
-        if (!data || data.status !== 'success') {
-          setErrorMsg('Invalid email or password.');
+        if (error) {
+          setErrorMsg(error.message);
           setIsLoading(false);
         } else {
+          // Spring Boot verifies the Supabase session and supplies the actual
+          // account role. The selected card never grants dashboard access.
+          await login();
           setSuccessMsg('Access Granted!');
           setIsSuccess(true);
-          setTimeout(() => {
-            let mappedRole: 'admin' | 'client' | 'editor' = 'client';
-            const backendRole = (data.user?.role || '').toLowerCase();
-            if (backendRole === 'admin') mappedRole = 'admin';
-            else if (backendRole === 'editor') mappedRole = 'editor';
-            login(mappedRole, data.token, data.user);
-          }, 2500);
         }
       }
     } catch (err: any) {
@@ -397,14 +395,6 @@ export const LoginPortal: React.FC = () => {
                     />
                   </div>
                 </div>
-
-                {/* Pre-fill hint for standard sandbox evaluation */}
-                {!isSignUpMode && (email === 'tanishq@reliancejewels.com' || email === 'marcus.vane@valkyrias.co' || email === 'admin@valkyrias.co') && (
-                  <div className="p-3.5 bg-white/[0.02] border border-white/5 rounded-xl text-[11px] text-gray-400 font-sans leading-relaxed flex items-start gap-2.5">
-                    <span className="text-primary-gold font-bold">Demo Hub:</span>
-                    <span>Sandbox credentials preloaded. Click Authorize to access directly, or modify the password if custom testing is desired.</span>
-                  </div>
-                )}
 
                 {errorMsg && (
                   <div className="p-3 bg-red-950/20 border border-red-900/30 text-red-400 rounded-xl text-xs flex items-center space-x-2">

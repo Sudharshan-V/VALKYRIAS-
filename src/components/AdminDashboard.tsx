@@ -6,6 +6,7 @@ import {
   Trash2, DollarSign, ArrowUpRight, ShoppingBag, FolderGit2, LogOut, ExternalLink, ArrowLeft, Edit3, Award
 } from 'lucide-react';
 import { ValkyriasLogo } from './ValkyriasLogo';
+import { ProfileButton, ProfileModal } from './profile';
 
 export const AdminDashboard: React.FC = () => {
   const { 
@@ -18,8 +19,11 @@ export const AdminDashboard: React.FC = () => {
     totalContract,
     setView,
     plans,
-    updatePlan
+    updatePlan,
+    profile
   } = useAppState();
+
+  const profileName = profile?.displayName || profile?.fullName || profile?.email || 'Administrator';
 
   const { scrollY } = useScroll();
   const yGlow1 = useTransform(scrollY, [0, 1500], [0, 100]);
@@ -29,6 +33,7 @@ export const AdminDashboard: React.FC = () => {
   const [newCategory, setNewCategory] = useState('PHOTO EDITING');
   const [newImage, setNewImage] = useState('https://lh3.googleusercontent.com/aida-public/AB6AXuBs0yIhqcnx03pXDe_0-1jj_ZbCfLYo5AzD1jtpNqUZ3yKWfBWKQtZveOdskUpuAnxk9XvbfzJRCpGFszLfJpFRRQTSAoco5MJXzuwXAjnUFXimOwQh7uIvY3cxg1vSi5HKkxzPoys5WkhTEhx0jwrWTDEo8r-TCzCLrogzeUMiLp0yyWKHs1LN1D3450bb_-upESCNGY6goirC_Jd-Hs8zlXSbItiinHvNuEc2GzAH_djvb49_W9Bu');
   const [successToast, setSuccessToast] = useState('');
+  const [profileOpen, setProfileOpen] = useState(false);
 
   // Dynamic Plan Editor States
   const [selectedPlanId, setSelectedPlanId] = useState('plan1');
@@ -123,6 +128,13 @@ export const AdminDashboard: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-4">
+          <div className="text-right hidden md:block">
+            <span className="font-mono text-[9px] text-gray-500 block uppercase">ADMIN PROFILE</span>
+            <span className="text-sm font-semibold text-white">{profileName}</span>
+          </div>
+
+          <ProfileButton onClick={() => setProfileOpen(true)} />
+
           <button
             onClick={() => setView('landing')}
             className="px-4 py-2.5 rounded-lg text-xs font-mono font-bold tracking-wider text-primary-gold hover:text-white neumorphic-button flex items-center space-x-2"
@@ -513,6 +525,7 @@ export const AdminDashboard: React.FC = () => {
           <span>Current Average order: ₹4,500</span>
         </div>
       </div>
+      <ProfileModal isOpen={profileOpen} onClose={() => setProfileOpen(false)} />
     </div>
   );
 };

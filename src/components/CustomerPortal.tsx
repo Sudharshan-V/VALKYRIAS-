@@ -8,6 +8,7 @@ import {
   Layers, Database, Shield, ArrowLeft, Trash2
 } from 'lucide-react';
 import { ValkyriasLogo } from './ValkyriasLogo';
+import { ProfileButton, ProfileModal } from './profile';
 
 export const CustomerPortal: React.FC = () => {
   const { 
@@ -28,8 +29,11 @@ export const CustomerPortal: React.FC = () => {
     addNote,
     deleteNote,
     activePlan,
-    setActivePlan
+    setActivePlan,
+    profile
   } = useAppState();
+
+  const profileName = profile?.displayName || profile?.fullName || profile?.email || 'Client';
 
   const { scrollY } = useScroll();
   const yGlow1 = useTransform(scrollY, [0, 1500], [0, 100]);
@@ -43,6 +47,7 @@ export const CustomerPortal: React.FC = () => {
   const [newNoteContent, setNewNoteContent] = useState('');
   const [newNoteCategory, setNewNoteCategory] = useState('Creative Design');
   const [showLimitModal, setShowLimitModal] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const [noteErrorMsg, setNoteErrorMsg] = useState<string | null>(null);
   const [isCreatingNote, setIsCreatingNote] = useState(false);
 
@@ -322,8 +327,10 @@ export const CustomerPortal: React.FC = () => {
         <div className="flex items-center gap-4">
           <div className="text-right hidden md:block">
             <span className="font-mono text-[9px] text-gray-500 block uppercase">CLIENT PROFILE</span>
-            <span className="text-sm font-semibold text-white">Tanishq (Reliance Jewels)</span>
+            <span className="text-sm font-semibold text-white">{profileName}</span>
           </div>
+
+          <ProfileButton onClick={() => setProfileOpen(true)} />
 
           <button
             onClick={logout}
@@ -406,7 +413,7 @@ export const CustomerPortal: React.FC = () => {
                     </span>
                   </div>
                   <h3 className="font-display font-black text-2xl text-white">
-                    Welcome back, Tanishq Team
+                    Welcome back, {profileName}
                   </h3>
                   <p className="text-sm text-gray-400 leading-relaxed font-sans font-light">
                     Your studio post-production workspace is synchronized. From this secure control panel, you can monitor current rendering milestones, view encrypted watermarked draft screenings, review recent direct chat correspondence with Marcus, and retrieve your final master compilations.
@@ -1523,7 +1530,7 @@ export const CustomerPortal: React.FC = () => {
         </AnimatePresence>
 
         {/* Security / Payment Lock Overlay */}
-        {paymentLockModal && (
+      {paymentLockModal && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-6 bg-black/95 backdrop-blur-md">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -1619,8 +1626,10 @@ export const CustomerPortal: React.FC = () => {
               </div>
             </motion.div>
           </div>
-        )}
-      </div>
+      )}
+
+      <ProfileModal isOpen={profileOpen} onClose={() => setProfileOpen(false)} />
+    </div>
 
     </div>
   );

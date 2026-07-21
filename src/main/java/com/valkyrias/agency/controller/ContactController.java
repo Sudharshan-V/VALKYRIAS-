@@ -1,7 +1,8 @@
 package com.valkyrias.agency.controller;
 
 import com.valkyrias.agency.model.ContactMessage;
-import com.valkyrias.agency.service.ContactService;
+import com.valkyrias.agency.repository.ContactMessageRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -11,11 +12,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 @Controller
 public class ContactController {
 
-    private final ContactService contactService;
-
-    public ContactController(ContactService contactService) {
-        this.contactService = contactService;
-    }
+    @Autowired
+    private ContactMessageRepository contactMessageRepository;
 
     /**
      * Handles GET request to display the contact form page.
@@ -33,8 +31,8 @@ public class ContactController {
      */
     @PostMapping("/contact")
     public String submitContactForm(@ModelAttribute("contactMessage") ContactMessage contactMessage, Model model) {
-        // Save the entity using the service layer
-        contactService.saveContactMessage(contactMessage);
+        // Save the entity using the JPA Repository
+        contactMessageRepository.save(contactMessage);
         
         // Add a success message flag to display on the template
         model.addAttribute("success", true);

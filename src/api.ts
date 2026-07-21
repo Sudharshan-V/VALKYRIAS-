@@ -1,378 +1,228 @@
-const API_BASE_URL = '/api'; // Uses the same port/origin or proxied path, works perfectly!
+import { supabase } from './supabaseClient';
+import type {
+  ActionItem,
+  ApiErrorResponse,
+  ChatMessage,
+  Note,
+  ProfileResponse,
+  ProfileUpdateRequest,
+  Project,
+} from './types';
 
-function getHeaders() {
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+const API_BASE_URL = '/api';
+
+export class ApiError extends Error {
+  readonly status: number;
+  readonly fieldErrors: Record<string, string>;
+  readonly details: ApiErrorResponse;
+
+  constructor(details: ApiErrorResponse) {
+    super(details.message || 'The request could not be completed.');
+    this.name = 'ApiError';
+    this.status = details.status;
+    this.fieldErrors = details.fieldErrors ?? {};
+    this.details = details;
+  }
+}
+
+function apiUrl(path: string): string {
+  if (path.startsWith('/api/')) return path;
+  return `${API_BASE_URL}${path.startsWith('/') ? path : `/${path}`}`;
+}
+
+function normalizeApiError(status: number, payload: unknown): ApiErrorResponse {
+  if (payload && typeof payload === 'object') {
+    const body = payload as Partial<ApiErrorResponse>;
+    return {
+      timestamp: body.timestamp,
+      status: body.status ?? status,
+      error: body.error,
+      message: body.message || body.error || `Request failed with status ${status}.`,
+      path: body.path,
+      fieldErrors: body.fieldErrors,
+    };
+  }
+
+  return {
+    status,
+    message: typeof payload === 'string' && payload.trim()
+      ? payload
+      : `Request failed with status ${status}.`,
   };
-  const token = localStorage.getItem('valkyrias_jwt_token');
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-  return headers;
 }
 
 /**
- * AUTH APIs
+ * Sends a request to the Spring Boot API with the current Supabase access token.
+ * Authentication remains owned by the existing Supabase session; the backend
+ * uses the bearer token to resolve the current user for protected operations.
  */
-export async function login(payload: any) {
-  const res = await fetch(`${API_BASE_URL}/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.message || 'Login failed');
+export async function authenticatedRequest<T>(
+  path: string,
+  init: RequestInit = {},
+): Promise<T> {
+  const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+  if (sessionError || !session?.access_token) {
+    throw new ApiError({
+      status: 401,
+      error: 'Unauthorized',
+      message: 'Your session has expired. Please sign in again.',
+      path: apiUrl(path),
+    });
   }
-  return await res.json();
+
+  const headers = new Headers(init.headers);
+  headers.set('Accept', 'application/json');
+  headers.set('Authorization', `Bearer ${session.access_token}`);
+
+  if (init.body && !(init.body instanceof FormData) && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(apiUrl(path), {
+      ...init,
+      headers,
+      credentials: 'same-origin',
+    });
+  } catch (error) {
+    throw new ApiError({
+      status: 0,
+      error: 'Network error',
+      message: error instanceof Error
+        ? error.message
+        : 'The backend is unavailable. Please try again.',
+      path: apiUrl(path),
+    });
+  }
+
+  const responseText = await response.text();
+  let payload: unknown;
+  if (responseText) {
+    try {
+      payload = JSON.parse(responseText);
+    } catch {
+      payload = responseText;
+    }
+  }
+
+  if (!response.ok) {
+    throw new ApiError(normalizeApiError(response.status, payload));
+  }
+
+  return payload as T;
 }
 
-export async function register(payload: any) {
-  const res = await fetch(`${API_BASE_URL}/auth/register`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.message || 'Registration failed');
-  }
-  return await res.json();
-}
-
-export async function forgotPassword(payload: any) {
-  const res = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.message || 'Forgot password request failed');
-  }
-  return await res.json();
-}
-
-export async function resetPassword(payload: any) {
-  const res = await fetch(`${API_BASE_URL}/auth/reset-password`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.message || 'Reset password request failed');
-  }
-  return await res.json();
-}
-
-/**
- * PROJECTS APIs
- */
+/** Existing Spring Boot data operations retained for current dashboards. */
 export async function fetchProjects(userId: string) {
   try {
-    const res = await fetch(`${API_BASE_URL}/projects/user/${userId}`, {
-      headers: getHeaders()
-    });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch (err) {
-    console.warn('Backend projects fetch unavailable:', err);
+    return await authenticatedRequest<Project[]>(`/projects/user/${encodeURIComponent(userId)}`);
+  } catch (error) {
+    console.warn('Backend unavailable, falling back to local state:', error);
     return null;
   }
 }
 
-export async function saveProject(project: any) {
+export async function saveProject(project: unknown) {
   try {
-    const res = await fetch(`${API_BASE_URL}/projects`, {
+    return await authenticatedRequest<unknown>('/projects', {
       method: 'POST',
-      headers: getHeaders(),
       body: JSON.stringify(project),
     });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch (err) {
-    console.error('Error saving project:', err);
+  } catch (error) {
+    console.error('Error saving project to Spring Boot backend:', error);
     return null;
   }
 }
 
-export async function deleteProject(id: string) {
-  try {
-    await fetch(`${API_BASE_URL}/projects/${id}`, {
-      method: 'DELETE',
-      headers: getHeaders()
-    });
-  } catch (err) {
-    console.error('Error deleting project:', err);
-  }
-}
-
-/**
- * ACTION ITEMS APIs
- */
 export async function fetchActionItems(userId: string) {
   try {
-    const res = await fetch(`${API_BASE_URL}/action-items/user/${userId}`, {
-      headers: getHeaders()
-    });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch (err) {
+    return await authenticatedRequest<ActionItem[]>(`/action-items/user/${encodeURIComponent(userId)}`);
+  } catch {
     return null;
   }
 }
 
-export async function saveActionItem(item: any) {
+export async function saveActionItem(item: unknown) {
   try {
-    const res = await fetch(`${API_BASE_URL}/action-items`, {
+    return await authenticatedRequest<unknown>('/action-items', {
       method: 'POST',
-      headers: getHeaders(),
       body: JSON.stringify(item),
     });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch (err) {
+  } catch {
     return null;
   }
 }
 
-export async function deleteActionItem(id: string) {
-  try {
-    await fetch(`${API_BASE_URL}/action-items/${id}`, {
-      method: 'DELETE',
-      headers: getHeaders()
-    });
-  } catch (err) {
-    console.error('Error deleting action item:', err);
-  }
-}
-
-/**
- * CHAT MESSAGES APIs
- */
 export async function fetchChatMessages(userId: string) {
   try {
-    const res = await fetch(`${API_BASE_URL}/chat-messages/user/${userId}`, {
-      headers: getHeaders()
-    });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch (err) {
+    return await authenticatedRequest<ChatMessage[]>(`/chat-messages/user/${encodeURIComponent(userId)}`);
+  } catch {
     return null;
   }
 }
 
-export async function saveChatMessage(msg: any) {
+export async function saveChatMessage(message: unknown) {
   try {
-    const res = await fetch(`${API_BASE_URL}/chat-messages`, {
+    return await authenticatedRequest<unknown>('/chat-messages', {
       method: 'POST',
-      headers: getHeaders(),
-      body: JSON.stringify(msg),
+      body: JSON.stringify(message),
     });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch (err) {
+  } catch {
     return null;
   }
 }
 
-export async function deleteChatMessage(id: string) {
-  try {
-    await fetch(`${API_BASE_URL}/chat-messages/${id}`, {
-      method: 'DELETE',
-      headers: getHeaders()
-    });
-  } catch (err) {
-    console.error('Error deleting chat message:', err);
-  }
-}
-
-/**
- * NOTES APIs
- */
 export async function fetchNotes(userId: string) {
   try {
-    const res = await fetch(`${API_BASE_URL}/notes/user/${userId}`, {
-      headers: getHeaders()
-    });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch (err) {
+    return await authenticatedRequest<Note[]>(`/notes/user/${encodeURIComponent(userId)}`);
+  } catch {
     return null;
   }
 }
 
-export async function saveNote(note: any) {
+export async function saveNote(note: unknown) {
   try {
-    const res = await fetch(`${API_BASE_URL}/notes`, {
+    return await authenticatedRequest<unknown>('/notes', {
       method: 'POST',
-      headers: getHeaders(),
       body: JSON.stringify(note),
     });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch (err) {
+  } catch {
     return null;
   }
 }
 
 export async function deleteNoteFromApi(id: string) {
   try {
-    await fetch(`${API_BASE_URL}/notes/${id}`, {
-      method: 'DELETE',
-      headers: getHeaders()
-    });
-  } catch (err) {
-    console.error('Error deleting note:', err);
+    await authenticatedRequest<void>(`/notes/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  } catch (error) {
+    console.error('Error deleting note:', error);
   }
 }
 
-/**
- * APP SETTINGS APIs
- */
-export async function fetchSettings(userId: string) {
-  try {
-    const res = await fetch(`${API_BASE_URL}/settings/${userId}`, {
-      headers: getHeaders()
-    });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch (err) {
-    return null;
-  }
+export function getMyProfile(): Promise<ProfileResponse> {
+  return authenticatedRequest<ProfileResponse>('/profile/me');
 }
 
-export async function saveSettings(settings: any) {
-  try {
-    const res = await fetch(`${API_BASE_URL}/settings`, {
-      method: 'POST',
-      headers: getHeaders(),
-      body: JSON.stringify(settings),
-    });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch (err) {
-    return null;
-  }
+export function updateMyProfile(request: ProfileUpdateRequest): Promise<ProfileResponse> {
+  return authenticatedRequest<ProfileResponse>('/profile/me', {
+    method: 'PUT',
+    body: JSON.stringify(request),
+  });
 }
 
-/**
- * DELIVERABLES APIs
- */
-export async function fetchDeliverables(userId: string) {
-  try {
-    const res = await fetch(`${API_BASE_URL}/deliverables/user/${userId}`, {
-      headers: getHeaders()
-    });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch (err) {
-    return null;
-  }
+export function uploadMyAvatar(file: File): Promise<ProfileResponse> {
+  const body = new FormData();
+  body.append('file', file, file.name);
+  return authenticatedRequest<ProfileResponse>('/profile/me/avatar', {
+    method: 'POST',
+    body,
+  });
 }
 
-export async function saveDeliverable(deliverable: any) {
-  try {
-    const res = await fetch(`${API_BASE_URL}/deliverables`, {
-      method: 'POST',
-      headers: getHeaders(),
-      body: JSON.stringify(deliverable),
-    });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch (err) {
-    return null;
-  }
-}
-
-export async function deleteDeliverable(id: string) {
-  try {
-    await fetch(`${API_BASE_URL}/deliverables/${id}`, {
-      method: 'DELETE',
-      headers: getHeaders()
-    });
-  } catch (err) {
-    console.error('Error deleting deliverable:', err);
-  }
-}
-
-/**
- * PORTFOLIO ITEMS APIs
- */
-export async function fetchPortfolioItems(userId: string) {
-  try {
-    const res = await fetch(`${API_BASE_URL}/portfolio-items/user/${userId}`, {
-      headers: getHeaders()
-    });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch (err) {
-    return null;
-  }
-}
-
-export async function savePortfolioItem(item: any) {
-  try {
-    const res = await fetch(`${API_BASE_URL}/portfolio-items`, {
-      method: 'POST',
-      headers: getHeaders(),
-      body: JSON.stringify(item),
-    });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch (err) {
-    return null;
-  }
-}
-
-export async function deletePortfolioItem(id: string) {
-  try {
-    await fetch(`${API_BASE_URL}/portfolio-items/${id}`, {
-      method: 'DELETE',
-      headers: getHeaders()
-    });
-  } catch (err) {
-    console.error('Error deleting portfolio item:', err);
-  }
-}
-
-/**
- * PLANS APIs
- */
-export async function fetchPlans(userId: string) {
-  try {
-    const res = await fetch(`${API_BASE_URL}/plans/user/${userId}`, {
-      headers: getHeaders()
-    });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch (err) {
-    return null;
-  }
-}
-
-export async function savePlan(plan: any) {
-  try {
-    const res = await fetch(`${API_BASE_URL}/plans`, {
-      method: 'POST',
-      headers: getHeaders(),
-      body: JSON.stringify(plan),
-    });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch (err) {
-    return null;
-  }
-}
-
-export async function deletePlan(id: string) {
-  try {
-    await fetch(`${API_BASE_URL}/plans/${id}`, {
-      method: 'DELETE',
-      headers: getHeaders()
-    });
-  } catch (err) {
-    console.error('Error deleting plan:', err);
-  }
+export function deleteMyAvatar(): Promise<void> {
+  return authenticatedRequest<void>('/profile/me/avatar', {
+    method: 'DELETE',
+  });
 }

@@ -108,6 +108,308 @@ CREATE TABLE IF NOT EXISTS notes (
 );
 
 -- ==========================================
+-- User Profile Management
+--
+-- public.users is the Spring Boot account table. supabase_user_id links a
+-- verified Supabase Auth subject without replacing legacy application IDs.
+-- Avatar object paths are stored instead of public or expiring signed URLs.
+-- ==========================================
+
+CREATE TABLE IF NOT EXISTS public.users (
+    id UUID PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL,
+    password VARCHAR(255),
+    role VARCHAR(255) NOT NULL DEFAULT 'client',
+    supabase_user_id UUID,
+    display_name VARCHAR(80),
+    profile_image_path VARCHAR(500),
+    phone_number VARCHAR(30),
+    country VARCHAR(100),
+    timezone VARCHAR(100),
+    bio VARCHAR(2000),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT uq_users_email UNIQUE (email),
+    CONSTRAINT fk_users_supabase_auth
+        FOREIGN KEY (supabase_user_id) REFERENCES auth.users(id) ON DELETE SET NULL,
+    CONSTRAINT ck_users_name_length
+        CHECK (CHAR_LENGTH(BTRIM(name)) BETWEEN 2 AND 100),
+    CONSTRAINT ck_users_password_present
+        CHECK (password IS NULL OR CHAR_LENGTH(password) BETWEEN 1 AND 255),
+    CONSTRAINT ck_users_role
+        CHECK (UPPER(role) IN ('ADMIN', 'CLIENT', 'EDITOR')),
+    CONSTRAINT ck_users_display_name_length
+        CHECK (display_name IS NULL OR CHAR_LENGTH(display_name) <= 80),
+    CONSTRAINT ck_users_profile_image_path_length
+        CHECK (profile_image_path IS NULL OR CHAR_LENGTH(BTRIM(profile_image_path)) BETWEEN 1 AND 500),
+    CONSTRAINT ck_users_phone_number_format
+        CHECK (phone_number IS NULL OR phone_number ~ '^(|\+?[0-9 .()-]{7,25})$'),
+    CONSTRAINT ck_users_country_length
+        CHECK (country IS NULL OR CHAR_LENGTH(country) <= 100),
+    CONSTRAINT ck_users_timezone_length
+        CHECK (timezone IS NULL OR CHAR_LENGTH(timezone) <= 100),
+    CONSTRAINT ck_users_bio_length
+        CHECK (bio IS NULL OR CHAR_LENGTH(bio) <= 2000)
+);
+
+-- Add shared profile columns when public.users already exists. Existing
+-- authentication columns and rows remain untouched.
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS supabase_user_id UUID;
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS display_name VARCHAR(80);
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS profile_image_path VARCHAR(500);
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS phone_number VARCHAR(30);
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS country VARCHAR(100);
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS timezone VARCHAR(100);
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS bio VARCHAR(2000);
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+-- Supabase-synced identities authenticate with a verified external subject and
+-- therefore do not require a local password. Legacy password accounts remain
+-- supported and their non-null values are retained.
+ALTER TABLE public.users ALTER COLUMN password DROP NOT NULL;
+
+-- If Hibernate created public.users before this script, add the same checks
+-- without scanning or rejecting legacy rows. NOT VALID still enforces each
+-- check for new and subsequently updated rows.
+DO $profile_constraints$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conrelid = 'public.users'::regclass AND conname = 'fk_users_supabase_auth'
+    ) THEN
+        ALTER TABLE public.users ADD CONSTRAINT fk_users_supabase_auth
+            FOREIGN KEY (supabase_user_id) REFERENCES auth.users(id) ON DELETE SET NULL NOT VALID;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conrelid = 'public.users'::regclass AND conname = 'ck_users_name_length'
+    ) THEN
+        ALTER TABLE public.users ADD CONSTRAINT ck_users_name_length
+            CHECK (CHAR_LENGTH(BTRIM(name)) BETWEEN 2 AND 100) NOT VALID;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conrelid = 'public.users'::regclass AND conname = 'ck_users_password_present'
+    ) THEN
+        ALTER TABLE public.users ADD CONSTRAINT ck_users_password_present
+            CHECK (password IS NULL OR CHAR_LENGTH(password) BETWEEN 1 AND 255) NOT VALID;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conrelid = 'public.users'::regclass AND conname = 'ck_users_role'
+    ) THEN
+        ALTER TABLE public.users ADD CONSTRAINT ck_users_role
+            CHECK (UPPER(role) IN ('ADMIN', 'CLIENT', 'EDITOR')) NOT VALID;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conrelid = 'public.users'::regclass AND conname = 'ck_users_display_name_length'
+    ) THEN
+        ALTER TABLE public.users ADD CONSTRAINT ck_users_display_name_length
+            CHECK (display_name IS NULL OR CHAR_LENGTH(display_name) <= 80) NOT VALID;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conrelid = 'public.users'::regclass AND conname = 'ck_users_profile_image_path_length'
+    ) THEN
+        ALTER TABLE public.users ADD CONSTRAINT ck_users_profile_image_path_length
+            CHECK (profile_image_path IS NULL OR CHAR_LENGTH(BTRIM(profile_image_path)) BETWEEN 1 AND 500) NOT VALID;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conrelid = 'public.users'::regclass AND conname = 'ck_users_phone_number_format'
+    ) THEN
+        ALTER TABLE public.users ADD CONSTRAINT ck_users_phone_number_format
+            CHECK (phone_number IS NULL OR phone_number ~ '^(|\+?[0-9 .()-]{7,25})$') NOT VALID;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conrelid = 'public.users'::regclass AND conname = 'ck_users_country_length'
+    ) THEN
+        ALTER TABLE public.users ADD CONSTRAINT ck_users_country_length
+            CHECK (country IS NULL OR CHAR_LENGTH(country) <= 100) NOT VALID;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conrelid = 'public.users'::regclass AND conname = 'ck_users_timezone_length'
+    ) THEN
+        ALTER TABLE public.users ADD CONSTRAINT ck_users_timezone_length
+            CHECK (timezone IS NULL OR CHAR_LENGTH(timezone) <= 100) NOT VALID;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conrelid = 'public.users'::regclass AND conname = 'ck_users_bio_length'
+    ) THEN
+        ALTER TABLE public.users ADD CONSTRAINT ck_users_bio_length
+            CHECK (bio IS NULL OR CHAR_LENGTH(bio) <= 2000) NOT VALID;
+    END IF;
+END;
+$profile_constraints$;
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_users_supabase_user_id
+    ON public.users (supabase_user_id)
+    WHERE supabase_user_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_users_email_normalized
+    ON public.users (LOWER(email));
+
+CREATE TABLE IF NOT EXISTS public.client_profiles (
+    user_id UUID PRIMARY KEY REFERENCES public.users(id) ON DELETE CASCADE,
+    company_name VARCHAR(150),
+    client_type VARCHAR(30),
+    preferred_communication VARCHAR(30),
+    default_project_category VARCHAR(100),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT ck_client_profiles_company_name_length
+        CHECK (company_name IS NULL OR CHAR_LENGTH(company_name) <= 150),
+    CONSTRAINT ck_client_profiles_client_type
+        CHECK (client_type IS NULL OR client_type IN ('INDIVIDUAL', 'BUSINESS', 'AGENCY', 'NON_PROFIT', 'OTHER')),
+    CONSTRAINT ck_client_profiles_preferred_communication
+        CHECK (preferred_communication IS NULL OR preferred_communication IN ('EMAIL', 'PHONE', 'WHATSAPP', 'VIDEO_CALL', 'OTHER')),
+    CONSTRAINT ck_client_profiles_default_category_length
+        CHECK (default_project_category IS NULL OR CHAR_LENGTH(default_project_category) <= 100)
+);
+
+CREATE INDEX IF NOT EXISTS idx_client_profiles_client_type
+    ON public.client_profiles (client_type);
+
+CREATE TABLE IF NOT EXISTS public.editor_profiles (
+    user_id UUID PRIMARY KEY REFERENCES public.users(id) ON DELETE CASCADE,
+    professional_title VARCHAR(120),
+    experience_years INTEGER,
+    starting_price NUMERIC(14, 2),
+    hourly_rate NUMERIC(14, 2),
+    delivery_time VARCHAR(100),
+    availability_status VARCHAR(30),
+    portfolio_summary VARCHAR(3000),
+    location VARCHAR(150),
+    website_url VARCHAR(2048),
+    instagram_url VARCHAR(2048),
+    linkedin_url VARCHAR(2048),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT ck_editor_profiles_title_length
+        CHECK (professional_title IS NULL OR CHAR_LENGTH(professional_title) <= 120),
+    CONSTRAINT ck_editor_profiles_experience_years
+        CHECK (experience_years IS NULL OR experience_years BETWEEN 0 AND 80),
+    CONSTRAINT ck_editor_profiles_starting_price
+        CHECK (starting_price IS NULL OR starting_price >= 0),
+    CONSTRAINT ck_editor_profiles_hourly_rate
+        CHECK (hourly_rate IS NULL OR hourly_rate >= 0),
+    CONSTRAINT ck_editor_profiles_delivery_time_length
+        CHECK (delivery_time IS NULL OR CHAR_LENGTH(delivery_time) <= 100),
+    CONSTRAINT ck_editor_profiles_availability_status
+        CHECK (availability_status IS NULL OR availability_status IN ('AVAILABLE', 'LIMITED', 'UNAVAILABLE')),
+    CONSTRAINT ck_editor_profiles_portfolio_summary_length
+        CHECK (portfolio_summary IS NULL OR CHAR_LENGTH(portfolio_summary) <= 3000),
+    CONSTRAINT ck_editor_profiles_location_length
+        CHECK (location IS NULL OR CHAR_LENGTH(location) <= 150),
+    CONSTRAINT ck_editor_profiles_website_url_format
+        CHECK (website_url IS NULL OR website_url = '' OR website_url ~* '^https?://[^[:space:]]+$'),
+    CONSTRAINT ck_editor_profiles_instagram_url_format
+        CHECK (instagram_url IS NULL OR instagram_url = '' OR instagram_url ~* '^https?://[^[:space:]]+$'),
+    CONSTRAINT ck_editor_profiles_linkedin_url_format
+        CHECK (linkedin_url IS NULL OR linkedin_url = '' OR linkedin_url ~* '^https?://[^[:space:]]+$')
+);
+
+CREATE INDEX IF NOT EXISTS idx_editor_profiles_availability_status
+    ON public.editor_profiles (availability_status);
+
+-- Each multi-value editor field is normalized to one value per row. The
+-- composite primary keys also index lookups and prevent exact duplicates.
+CREATE TABLE IF NOT EXISTS public.editor_profile_skills (
+    user_id UUID NOT NULL REFERENCES public.editor_profiles(user_id) ON DELETE CASCADE,
+    skill VARCHAR(80) NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (user_id, skill),
+    CONSTRAINT ck_editor_profile_skills_value
+        CHECK (CHAR_LENGTH(BTRIM(skill)) BETWEEN 1 AND 80)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_editor_profile_skills_normalized
+    ON public.editor_profile_skills (user_id, LOWER(skill));
+CREATE INDEX IF NOT EXISTS idx_editor_profile_skills_value
+    ON public.editor_profile_skills (LOWER(skill));
+
+CREATE TABLE IF NOT EXISTS public.editor_profile_software (
+    user_id UUID NOT NULL REFERENCES public.editor_profiles(user_id) ON DELETE CASCADE,
+    software VARCHAR(80) NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (user_id, software),
+    CONSTRAINT ck_editor_profile_software_value
+        CHECK (CHAR_LENGTH(BTRIM(software)) BETWEEN 1 AND 80)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_editor_profile_software_normalized
+    ON public.editor_profile_software (user_id, LOWER(software));
+CREATE INDEX IF NOT EXISTS idx_editor_profile_software_value
+    ON public.editor_profile_software (LOWER(software));
+
+CREATE TABLE IF NOT EXISTS public.editor_profile_languages (
+    user_id UUID NOT NULL REFERENCES public.editor_profiles(user_id) ON DELETE CASCADE,
+    language VARCHAR(80) NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (user_id, language),
+    CONSTRAINT ck_editor_profile_languages_value
+        CHECK (CHAR_LENGTH(BTRIM(language)) BETWEEN 1 AND 80)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_editor_profile_languages_normalized
+    ON public.editor_profile_languages (user_id, LOWER(language));
+CREATE INDEX IF NOT EXISTS idx_editor_profile_languages_value
+    ON public.editor_profile_languages (LOWER(language));
+
+CREATE TABLE IF NOT EXISTS public.editor_profile_certifications (
+    user_id UUID NOT NULL REFERENCES public.editor_profiles(user_id) ON DELETE CASCADE,
+    certification VARCHAR(150) NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (user_id, certification),
+    CONSTRAINT ck_editor_profile_certifications_value
+        CHECK (CHAR_LENGTH(BTRIM(certification)) BETWEEN 1 AND 150)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_editor_profile_certifications_normalized
+    ON public.editor_profile_certifications (user_id, LOWER(certification));
+CREATE INDEX IF NOT EXISTS idx_editor_profile_certifications_value
+    ON public.editor_profile_certifications (LOWER(certification));
+
+-- Keep updated_at correct for both JPA and direct SQL updates.
+CREATE OR REPLACE FUNCTION public.set_updated_at()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS set_users_updated_at ON public.users;
+CREATE TRIGGER set_users_updated_at
+    BEFORE UPDATE ON public.users
+    FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+DROP TRIGGER IF EXISTS set_client_profiles_updated_at ON public.client_profiles;
+CREATE TRIGGER set_client_profiles_updated_at
+    BEFORE UPDATE ON public.client_profiles
+    FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+DROP TRIGGER IF EXISTS set_editor_profiles_updated_at ON public.editor_profiles;
+CREATE TRIGGER set_editor_profiles_updated_at
+    BEFORE UPDATE ON public.editor_profiles
+    FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+-- ==========================================
 -- Enable Row Level Security (RLS) on all tables
 -- ==========================================
 ALTER TABLE app_settings ENABLE ROW LEVEL SECURITY;
@@ -118,64 +420,103 @@ ALTER TABLE deliverables ENABLE ROW LEVEL SECURITY;
 ALTER TABLE portfolio_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE plans ENABLE ROW LEVEL SECURITY;
 ALTER TABLE notes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.client_profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.editor_profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.editor_profile_skills ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.editor_profile_software ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.editor_profile_languages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.editor_profile_certifications ENABLE ROW LEVEL SECURITY;
+
+-- Profile data is private to the Spring Boot backend. No anon/authenticated
+-- policies are created for these tables; RLS therefore denies frontend Data
+-- API access while a trusted server/database-owner connection remains in
+-- charge of application authorization.
+REVOKE ALL ON TABLE public.users FROM anon, authenticated;
+REVOKE ALL ON TABLE public.client_profiles FROM anon, authenticated;
+REVOKE ALL ON TABLE public.editor_profiles FROM anon, authenticated;
+REVOKE ALL ON TABLE public.editor_profile_skills FROM anon, authenticated;
+REVOKE ALL ON TABLE public.editor_profile_software FROM anon, authenticated;
+REVOKE ALL ON TABLE public.editor_profile_languages FROM anon, authenticated;
+REVOKE ALL ON TABLE public.editor_profile_certifications FROM anon, authenticated;
+
+-- Provision the private bucket named by SUPABASE_PROFILE_BUCKET through the
+-- Supabase Storage API or dashboard. Configure the same byte limit as
+-- PROFILE_AVATAR_MAX_BYTES and allow only image/jpeg, image/png, and
+-- image/webp. This script intentionally does not mutate storage schema tables.
 
 -- ==========================================
 -- Corrected Row Level Security Policies
 -- (Notice: FOR ALL requires 'FOR ALL' syntax)
 -- ==========================================
 
--- Policy for app_settings (Where ID is the User ID)
-CREATE POLICY "user_settings_policy" ON app_settings
-    FOR ALL
-    TO authenticated
-    USING (auth.uid() = id)
-    WITH CHECK (auth.uid() = id);
+-- PostgreSQL has no CREATE POLICY IF NOT EXISTS. This block creates only
+-- missing policies, making the setup script rerunnable without overwriting
+-- policies that may have been intentionally adjusted in production.
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies
+        WHERE schemaname = 'public' AND tablename = 'app_settings'
+          AND policyname = 'user_settings_policy'
+    ) THEN
+        EXECUTE 'CREATE POLICY "user_settings_policy" ON public.app_settings FOR ALL TO authenticated USING (auth.uid() = id) WITH CHECK (auth.uid() = id)';
+    END IF;
 
--- Policy for projects
-CREATE POLICY "user_projects_policy" ON projects
-    FOR ALL
-    TO authenticated
-    USING (auth.uid() = user_id)
-    WITH CHECK (auth.uid() = user_id);
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies
+        WHERE schemaname = 'public' AND tablename = 'projects'
+          AND policyname = 'user_projects_policy'
+    ) THEN
+        EXECUTE 'CREATE POLICY "user_projects_policy" ON public.projects FOR ALL TO authenticated USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id)';
+    END IF;
 
--- Policy for action_items
-CREATE POLICY "user_action_items_policy" ON action_items
-    FOR ALL
-    TO authenticated
-    USING (auth.uid() = user_id)
-    WITH CHECK (auth.uid() = user_id);
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies
+        WHERE schemaname = 'public' AND tablename = 'action_items'
+          AND policyname = 'user_action_items_policy'
+    ) THEN
+        EXECUTE 'CREATE POLICY "user_action_items_policy" ON public.action_items FOR ALL TO authenticated USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id)';
+    END IF;
 
--- Policy for chat_messages
-CREATE POLICY "user_chat_messages_policy" ON chat_messages
-    FOR ALL
-    TO authenticated
-    USING (auth.uid() = user_id)
-    WITH CHECK (auth.uid() = user_id);
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies
+        WHERE schemaname = 'public' AND tablename = 'chat_messages'
+          AND policyname = 'user_chat_messages_policy'
+    ) THEN
+        EXECUTE 'CREATE POLICY "user_chat_messages_policy" ON public.chat_messages FOR ALL TO authenticated USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id)';
+    END IF;
 
--- Policy for deliverables
-CREATE POLICY "user_deliverables_policy" ON deliverables
-    FOR ALL
-    TO authenticated
-    USING (auth.uid() = user_id)
-    WITH CHECK (auth.uid() = user_id);
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies
+        WHERE schemaname = 'public' AND tablename = 'deliverables'
+          AND policyname = 'user_deliverables_policy'
+    ) THEN
+        EXECUTE 'CREATE POLICY "user_deliverables_policy" ON public.deliverables FOR ALL TO authenticated USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id)';
+    END IF;
 
--- Policy for portfolio_items
-CREATE POLICY "user_portfolio_items_policy" ON portfolio_items
-    FOR ALL
-    TO authenticated
-    USING (auth.uid() = user_id)
-    WITH CHECK (auth.uid() = user_id);
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies
+        WHERE schemaname = 'public' AND tablename = 'portfolio_items'
+          AND policyname = 'user_portfolio_items_policy'
+    ) THEN
+        EXECUTE 'CREATE POLICY "user_portfolio_items_policy" ON public.portfolio_items FOR ALL TO authenticated USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id)';
+    END IF;
 
--- Policy for plans
-CREATE POLICY "user_plans_policy" ON plans
-    FOR ALL
-    TO authenticated
-    USING (auth.uid() = user_id)
-    WITH CHECK (auth.uid() = user_id);
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies
+        WHERE schemaname = 'public' AND tablename = 'plans'
+          AND policyname = 'user_plans_policy'
+    ) THEN
+        EXECUTE 'CREATE POLICY "user_plans_policy" ON public.plans FOR ALL TO authenticated USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id)';
+    END IF;
 
--- Policy for notes
-CREATE POLICY "user_notes_policy" ON notes
-    FOR ALL
-    TO authenticated
-    USING (auth.uid() = user_id)
-    WITH CHECK (auth.uid() = user_id);
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies
+        WHERE schemaname = 'public' AND tablename = 'notes'
+          AND policyname = 'user_notes_policy'
+    ) THEN
+        EXECUTE 'CREATE POLICY "user_notes_policy" ON public.notes FOR ALL TO authenticated USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id)';
+    END IF;
+END;
+$$;

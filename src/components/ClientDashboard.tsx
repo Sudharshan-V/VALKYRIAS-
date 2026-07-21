@@ -8,6 +8,7 @@ import {
   RefreshCw, Layers, ArrowLeft
 } from 'lucide-react';
 import { ValkyriasLogo } from './ValkyriasLogo';
+import { ProfileButton, ProfileModal } from './profile';
 
 export const ClientDashboard: React.FC = () => {
   const { 
@@ -22,8 +23,11 @@ export const ClientDashboard: React.FC = () => {
     paidToDate,
     nextInvoice,
     deleteDeliverable,
-    uploadDeliverable
+    uploadDeliverable,
+    profile
   } = useAppState();
+
+  const profileName = profile?.displayName || profile?.fullName || profile?.email || 'Editor';
 
   const { scrollY } = useScroll();
   const yGlow1 = useTransform(scrollY, [0, 1500], [0, 100]);
@@ -42,6 +46,7 @@ export const ClientDashboard: React.FC = () => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadingState, setUploadingState] = useState<'idle' | 'handshake' | 'encrypting' | 'transferring' | 'verifying' | 'complete'>('idle');
   const [uploadedFileName, setUploadedFileName] = useState('');
+  const [profileOpen, setProfileOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Filter messages for selected project
@@ -219,8 +224,10 @@ export const ClientDashboard: React.FC = () => {
         <div className="flex items-center gap-4">
           <div className="flex items-center space-x-2 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-lg">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="font-mono text-xs text-emerald-400 font-bold uppercase">Marcus Vane (Online)</span>
+            <span className="font-mono text-xs text-emerald-400 font-bold uppercase">{profileName} (Online)</span>
           </div>
+
+          <ProfileButton onClick={() => setProfileOpen(true)} />
 
           <button
             onClick={logout}
@@ -669,6 +676,7 @@ export const ClientDashboard: React.FC = () => {
           </form>
         </div>
       </div>
+      <ProfileModal isOpen={profileOpen} onClose={() => setProfileOpen(false)} />
     </div>
   );
 };
