@@ -20,8 +20,9 @@ public class Project {
 
     private String client;
     private String editor;
+    @Column(precision = 19, scale = 2)
     private BigDecimal budget = BigDecimal.ZERO;
-    private BigDecimal progress = BigDecimal.ZERO;
+    private Integer progress = 0;
 
     @Column(name = "status")
     private String status = "Active";
@@ -34,8 +35,8 @@ public class Project {
     private String category;
     private String thumbnail;
 
-    @Column(columnDefinition = "jsonb")
-    private String contributors = "[]";
+    @Column(columnDefinition = "text array")
+    private String[] contributors = new String[0];
 
     @Column(name = "created_at")
     private OffsetDateTime createdAt = OffsetDateTime.now();
@@ -60,8 +61,8 @@ public class Project {
     public BigDecimal getBudget() { return budget; }
     public void setBudget(BigDecimal budget) { this.budget = budget; }
 
-    public BigDecimal getProgress() { return progress; }
-    public void setProgress(BigDecimal progress) { this.progress = progress; }
+    public Integer getProgress() { return progress; }
+    public void setProgress(Integer progress) { this.progress = progress; }
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
@@ -81,8 +82,8 @@ public class Project {
     public String getThumbnail() { return thumbnail; }
     public void setThumbnail(String thumbnail) { this.thumbnail = thumbnail; }
 
-    public String getContributors() { return contributors; }
-    public void setContributors(String contributors) { this.contributors = contributors; }
+    public String[] getContributors() { return contributors; }
+    public void setContributors(String[] contributors) { this.contributors = contributors; }
 
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }

@@ -12,13 +12,13 @@ public class AppSetting {
     @Id
     private UUID id;
 
-    @Column(name = "total_contract", nullable = false)
+    @Column(name = "total_contract", nullable = false, precision = 19, scale = 2)
     private BigDecimal totalContract = BigDecimal.valueOf(1240000);
 
-    @Column(name = "paid_to_date", nullable = false)
+    @Column(name = "paid_to_date", nullable = false, precision = 19, scale = 2)
     private BigDecimal paidToDate = BigDecimal.valueOf(790000);
 
-    @Column(name = "next_invoice", nullable = false)
+    @Column(name = "next_invoice", nullable = false, precision = 19, scale = 2)
     private BigDecimal nextInvoice = BigDecimal.valueOf(450000);
 
     @Column(name = "active_plan")

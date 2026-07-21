@@ -23,8 +23,8 @@ public class Plan {
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    @Column(columnDefinition = "jsonb")
-    private String features = "[]";
+    @Column(columnDefinition = "text array")
+    private String[] features = new String[0];
 
     @Column(name = "is_popular")
     private Boolean isPopular = false;
@@ -52,8 +52,8 @@ public class Plan {
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
 
-    public String getFeatures() { return features; }
-    public void setFeatures(String features) { this.features = features; }
+    public String[] getFeatures() { return features; }
+    public void setFeatures(String[] features) { this.features = features; }
 
     public Boolean getIsPopular() { return isPopular; }
     public void setIsPopular(Boolean isPopular) { this.isPopular = isPopular; }

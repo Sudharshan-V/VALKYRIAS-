@@ -2,7 +2,6 @@ package com.valkyrias.agency.config;
 
 import com.valkyrias.agency.security.JsonAccessDeniedHandler;
 import com.valkyrias.agency.security.JsonAuthenticationEntryPoint;
-import com.valkyrias.agency.security.JwtRequestFilter;
 import com.valkyrias.agency.security.SupabaseJwtAuthenticationFilter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
@@ -37,17 +36,6 @@ public class SecurityConfig {
             SupabaseJwtAuthenticationFilter filter
     ) {
         FilterRegistrationBean<SupabaseJwtAuthenticationFilter> registration = new FilterRegistrationBean<>(filter);
-        registration.setEnabled(false);
-        return registration;
-    }
-
-    /**
-     * The legacy locally-signed JWT filter is not part of the Supabase access
-     * token flow and must not be auto-registered as a servlet filter.
-     */
-    @Bean
-    FilterRegistrationBean<JwtRequestFilter> disableLegacyJwtFilterRegistration(JwtRequestFilter filter) {
-        FilterRegistrationBean<JwtRequestFilter> registration = new FilterRegistrationBean<>(filter);
         registration.setEnabled(false);
         return registration;
     }

@@ -23,6 +23,7 @@ public class ActionItem {
 
     private String status = "pending";
     private String type = "feedback";
+    @Column(precision = 19, scale = 2)
     private BigDecimal budget;
 
     @Column(name = "created_at")
