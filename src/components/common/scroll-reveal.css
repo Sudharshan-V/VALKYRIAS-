@@ -1,0 +1,38 @@
+/*
+ * Viewport reveal primitives intentionally use the individual `translate`
+ * property. This composes safely with Motion's `transform` animations.
+ */
+[data-scroll-reveal-active='true'] {
+  --scroll-reveal-distance: clamp(1.25rem, 2.5vw, 2.75rem);
+  opacity: 0;
+  translate: 0 var(--scroll-reveal-distance);
+}
+
+[data-scroll-reveal-active='true'][data-scroll-reveal-from='up'] {
+  translate: 0 calc(var(--scroll-reveal-distance) * -1);
+}
+
+[data-scroll-reveal-active='true'].scroll-reveal--visible {
+  opacity: 1;
+  translate: 0 0;
+}
+
+[data-scroll-reveal-active='true'].scroll-reveal--entering {
+  transition:
+    opacity 560ms cubic-bezier(0.22, 1, 0.36, 1) var(--scroll-reveal-delay, 0ms),
+    translate 740ms cubic-bezier(0.16, 1, 0.3, 1) var(--scroll-reveal-delay, 0ms);
+}
+
+[data-scroll-reveal-active='true'].scroll-reveal--resetting {
+  transition: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-scroll-reveal-active='true'],
+  [data-scroll-reveal-active='true'][data-scroll-reveal-from='up'],
+  [data-scroll-reveal-active='true'].scroll-reveal--visible {
+    opacity: 1 !important;
+    translate: none !important;
+    transition: none !important;
+  }
+}

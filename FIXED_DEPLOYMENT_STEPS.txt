@@ -1,0 +1,69 @@
+VALKYRIAS FIXED BUILD — DEPLOYMENT STEPS
+========================================
+
+IMPORTANT: deploy the database and backend changes before the new frontend.
+
+1) DATABASE (SUPABASE)
+----------------------
+Open the Supabase SQL Editor and run:
+
+database/migrations/V20260727_01__add_site_settings_and_portfolio_images.sql
+
+This creates the public site-settings table, changes portfolio image storage to TEXT, and publishes existing administrator-created portfolio rows so they appear on the landing page.
+The backend uses Hibernate validation, so the backend will not start until this migration is applied.
+
+2) SUPABASE GOOGLE LOGIN
+------------------------
+In Supabase Authentication URL Configuration, add your real production callback URL:
+
+https://YOUR-DOMAIN/?auth_callback=google
+
+For local testing, also add:
+
+http://localhost:3000/?auth_callback=google
+
+Keep your production Site URL set to your live website origin.
+
+3) BACKEND (RENDER)
+-------------------
+Push the fixed source to GitHub and redeploy the Render service.
+The new backend endpoints are:
+
+GET  /api/site-settings/public
+PUT  /api/site-settings
+GET  /api/admin/users
+
+The existing admin-delete endpoint now permits deletion of another administrator, but protects:
+- the currently signed-in administrator
+- the last active administrator
+- users with protected order/assignment history
+
+Your Render service must still have the Supabase service-role configuration required by the existing permanent-user deletion feature. The backend now reads Render's PORT automatically.
+
+4) FRONTEND (NETLIFY)
+---------------------
+After the backend is live, redeploy the frontend from GitHub.
+Netlify will run:
+
+npm run build
+
+For local Windows testing:
+
+npm install
+npm run dev
+
+5) ADMIN SETTINGS
+-----------------
+Log in as an administrator. The dashboard now contains:
+- local-system portfolio image upload and URL upload
+- portfolio description, client, software and duration
+- portfolio delete button
+- editable website, Instagram, YouTube and Vimeo links
+- editable support email, privacy email, phone and address
+- editable Privacy Policy and Terms and Conditions
+- custom-name package creation
+- delete administrator option
+
+6) LOGIN LEGAL CONSENT
+----------------------
+Password login, registration and Google login now require acceptance of the Terms and Conditions and Privacy Policy. Changing the legal effective date makes users accept the current version again.

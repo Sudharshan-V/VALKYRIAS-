@@ -1,0 +1,27 @@
+# Secret environment files
+.env
+.env.*
+!.env.example
+
+# Frontend dependencies and builds
+node_modules/
+dist/
+.vite/
+coverage/
+
+# Spring Boot/Maven builds
+target/
+
+# Logs and temporary files
+*.log
+*.tmp
+*.bak
+*.old
+
+# IDE files
+.idea/
+.vscode/
+
+# Operating-system files
+.DS_Store
+Thumbs.db

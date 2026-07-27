@@ -1,0 +1,14 @@
+VALKYRIAS LANDING ROUTE HOTFIX
+
+Problem:
+The app restored a saved Supabase session during startup. When the backend profile request failed, StateContext redirected the public landing page to the login screen.
+
+Fix:
+Background session restoration now keeps the public landing page visible when profile hydration fails. Login is shown only after the user explicitly opens the portal/login flow or when an authenticated portal loses its session.
+
+Expected result:
+1. Open http://localhost:3000
+2. Intro animation completes
+3. Landing page is displayed
+4. A restored valid account shows its name/avatar in the Portal button
+5. Clicking the button opens the correct portal

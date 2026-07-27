@@ -1,0 +1,22 @@
+VALKYRIAS PORTAL UI FIX
+
+Changes included
+1. Landing-page logged-in button now shows the profile image and the word PORTAL only. The user's name is no longer displayed there.
+2. Client, Editor and Laura chats now show the authenticated user's profile image.
+3. Backend chat responses now include the sender's public avatar URL so both participants can see each other's profile image.
+4. Notification bells were added to Client, Editor and Admin portal headers.
+5. Checkout now uses the same persisted notification system.
+6. Notification dropdown renders through a document-body portal, stays inside the viewport, wraps long text, and scrolls internally.
+7. Notification unread count, mark-read and mark-all-read actions use the Spring Boot notification endpoints.
+8. Portal header controls wrap safely on smaller screens.
+
+Validation
+- TypeScript no-emit check passed.
+- TypeScript/TSX syntax diagnostics passed with zero errors.
+- Maven compilation could not run in the repair environment because the Maven wrapper required network access to repo.maven.apache.org.
+
+After copying the files
+1. Stop frontend and backend with Ctrl+C.
+2. Start backend again because DomainMapper.java changed.
+3. Start frontend again.
+4. Open http://localhost:3000 and press Ctrl+F5.

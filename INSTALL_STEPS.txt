@@ -1,0 +1,34 @@
+VALKYRIAS CLEAN FIXED PROJECT - WINDOWS SETUP
+
+1. Keep a backup of your current project folder.
+
+2. Extract this ZIP to a new folder.
+
+3. Copy your private .env.local file from the old project into the new project root.
+   Do not share or commit .env.local.
+
+4. Open PowerShell in the new project folder and install frontend packages:
+
+   npm install
+
+5. Start the backend in PowerShell window 1:
+
+   powershell -ExecutionPolicy Bypass -File ".\scripts\start-backend-local.ps1"
+
+6. Start the frontend in PowerShell window 2:
+
+   npm run dev
+
+7. Open:
+
+   http://localhost:3000
+
+8. Press Ctrl + F5 once after the first start.
+
+9. Test in this order:
+   - Landing page opens after the VALKYRIAS loader.
+   - Logged-in Portal button shows the user name and profile photo.
+   - Update profile details and photo.
+   - Drag the Editor progress bar and confirm the page does not scroll.
+   - Check Client, Editor, and Admin thumbnails.
+   - Open Laura and ask a follow-up question such as "tell me more".
